@@ -11,6 +11,7 @@ This is the backend for the Inventory Management System (IMS) built with Spring 
 ## Tech Stack
 
 - Java (Spring Boot)
+- Angular
 - MySQL
 - JPA/Hibernate
 
