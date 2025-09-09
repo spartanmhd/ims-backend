@@ -4,6 +4,8 @@ import com.example.ims_backend.entity.Fournisseur;
 import com.example.ims_backend.service.FournisseurService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +23,11 @@ public class FournisseurController {
     @GetMapping
     public List<Fournisseur> getAllFournisseurs() {
         return fournisseurService.getAllFournisseurs();
+    }
+
+    @GetMapping("/search")
+    public Page<Fournisseur> searchFournisseursByName(@RequestParam String name, Pageable pageable) {
+        return fournisseurService.searchByName(name, pageable);
     }
 
     // Get a fournisseur by id
@@ -54,4 +61,6 @@ public class FournisseurController {
             return ResponseEntity.notFound().build();
         }
     }
+
+
 }

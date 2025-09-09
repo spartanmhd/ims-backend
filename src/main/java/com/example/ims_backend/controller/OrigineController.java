@@ -38,6 +38,20 @@ public class OrigineController {
         return service.getAllOrigines(pageable);
     }
 
+    // Search origines by nom or fournisseur ICE
+    @GetMapping("/search")
+    public Page<Origine> search(@RequestParam(required = false) String nom,
+                                @RequestParam(required = false) String ice, Pageable pageable) {
+        if (nom != null) return service.searchByNom(nom, pageable);
+        if (ice != null) return service.searchByFournisseurIce(ice, pageable);
+        return service.getAllOrigines(pageable);
+    }
+
+    @GetMapping("/searchByFournisseurNom")
+    public Page<Origine> searchByFournisseurNom(@RequestParam String fournisseurNom, Pageable pageable) {
+        return service.searchByFournisseurNom(fournisseurNom, pageable);
+    }
+
     // Get a single origine by id
     @GetMapping("/{id}")
     public ResponseEntity<Origine> get(@PathVariable Long id) {
@@ -56,12 +70,5 @@ public class OrigineController {
         }
     }
 
-    // Search origines by nom or fournisseur ICE
-    @GetMapping("/search")
-    public Page<Origine> search(@RequestParam(required = false) String nom,
-                                @RequestParam(required = false) String ice, Pageable pageable) {
-        if (nom != null) return service.searchByNom(nom, pageable);
-        if (ice != null) return service.searchByFournisseurIce(ice, pageable);
-        return service.getAllOrigines(pageable);
-    }
+
 }

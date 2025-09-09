@@ -59,8 +59,14 @@ public class OrigineService {
         return origineRepository.findByFournisseurIceContainingIgnoreCase(ice, pageable);
     }
 
+    public Page<Origine> searchByFournisseurNom(String fournisseurNom, Pageable pageable) {
+        return origineRepository.findByFournisseurNameContainingIgnoreCase(fournisseurNom, pageable);
+    }
+
     // Get stock (quantite) for an origine
     public Optional<Double> getStockByOrigineId(Long id) {
-        return origineRepository.findById(id).map(Origine::getQuantite);
+        return origineRepository.findById(id)
+                .map(Origine::getQuantite)
+                .map(qty -> qty != null ? qty.doubleValue() : 0.0);
     }
 }

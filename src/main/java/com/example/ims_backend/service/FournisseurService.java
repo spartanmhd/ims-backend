@@ -3,6 +3,7 @@ package com.example.ims_backend.service;
 import com.example.ims_backend.entity.Fournisseur;
 import com.example.ims_backend.repository.FournisseurRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -42,5 +43,9 @@ public class FournisseurService {
             fournisseurRepository.delete(fournisseur);
             return true;
         }).orElse(false);
+    }
+
+    public Page<Fournisseur> searchByName(String name, Pageable pageable) {
+        return fournisseurRepository.findByNameContainingIgnoreCase(name, pageable);
     }
 }
