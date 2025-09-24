@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
-public interface OrigineRepository extends JpaRepository<Origine, Long> {
+public interface OrigineRepository extends JpaRepository<Origine, Integer> {
     Optional<Origine> findByNom(String nom);
 
     Page<Origine> findByNomContainingIgnoreCase(String nom, Pageable pageable);

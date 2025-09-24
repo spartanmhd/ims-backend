@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -15,18 +14,17 @@ public class OrigineService {
     @Autowired
     private OrigineRepository origineRepository;
 
-    // Create a new origine
+    // Create a new origine (no quantite, no prixAchat)
     public Origine saveOrigine(Origine origine) {
         return origineRepository.save(origine);
     }
 
-    // Update an existing origine
-    public Optional<Origine> updateOrigine(Long id, Origine updatedOrigine) {
+    // Update an existing origine (no quantite, no prixAchat)
+    public Optional<Origine> updateOrigine(Integer id, Origine updatedOrigine) {
         return origineRepository.findById(id).map(existingOrigine -> {
             existingOrigine.setNom(updatedOrigine.getNom());
             existingOrigine.setFournisseur(updatedOrigine.getFournisseur());
-            existingOrigine.setPrixAchat(updatedOrigine.getPrixAchat());
-            existingOrigine.setQuantite(updatedOrigine.getQuantite()); // quantite is Double
+            // Do not update quantite or prixAchat!
             return origineRepository.save(existingOrigine);
         });
     }
@@ -37,12 +35,12 @@ public class OrigineService {
     }
 
     // Get a single origine by id
-    public Optional<Origine> getOrigine(Long id) {
+    public Optional<Origine> getOrigine(Integer id) {
         return origineRepository.findById(id);
     }
 
     // Delete an origine by id
-    public boolean deleteOrigine(Long id) {
+    public boolean deleteOrigine(Integer id) {
         return origineRepository.findById(id).map(o -> {
             origineRepository.delete(o);
             return true;
@@ -61,12 +59,5 @@ public class OrigineService {
 
     public Page<Origine> searchByFournisseurNom(String fournisseurNom, Pageable pageable) {
         return origineRepository.findByFournisseurNameContainingIgnoreCase(fournisseurNom, pageable);
-    }
-
-    // Get stock (quantite) for an origine
-    public Optional<Double> getStockByOrigineId(Long id) {
-        return origineRepository.findById(id)
-                .map(Origine::getQuantite)
-                .map(qty -> qty != null ? qty.doubleValue() : 0.0);
     }
 }

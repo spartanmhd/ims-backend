@@ -3,12 +3,12 @@ package com.example.ims_backend.dto;
 import java.math.BigDecimal;
 
 public class ProduitOrigineDTO {
-    private Long idOrigine;
+    private Integer idOrigine;
     private String origineNom;
     private BigDecimal proportion;
 
-    public Long getIdOrigine() { return idOrigine; }
-    public void setIdOrigine(Long idOrigine) { this.idOrigine = idOrigine; }
+    public Integer getIdOrigine() { return idOrigine; }
+    public void setIdOrigine(Integer idOrigine) { this.idOrigine = idOrigine; }
     public String getOrigineNom() {
         return origineNom;
     }

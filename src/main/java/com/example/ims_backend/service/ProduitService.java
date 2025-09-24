@@ -10,6 +10,7 @@ import com.example.ims_backend.entity.ProduitOrigineKey;
 import com.example.ims_backend.repository.OrigineRepository;
 import com.example.ims_backend.repository.ProduitRepository;
 import com.example.ims_backend.repository.ProduitOrigineRepository;
+import com.example.ims_backend.repository.AchatOrigineRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class ProduitService {
@@ -27,19 +27,26 @@ public class ProduitService {
     private final ProduitRepository produitRepository;
     private final OrigineRepository origineRepository;
     private final ProduitOrigineRepository produitOrigineRepository;
+    private final AchatOrigineRepository achatOrigineRepository;
 
     @Autowired
-    public ProduitService(ProduitRepository produitRepository, OrigineRepository origineRepository, ProduitOrigineRepository produitOrigineRepository) {
+    public ProduitService(
+            ProduitRepository produitRepository,
+            OrigineRepository origineRepository,
+            ProduitOrigineRepository produitOrigineRepository,
+            AchatOrigineRepository achatOrigineRepository
+    ) {
         this.produitRepository = produitRepository;
         this.origineRepository = origineRepository;
         this.produitOrigineRepository = produitOrigineRepository;
+        this.achatOrigineRepository = achatOrigineRepository;
     }
 
-    /**
-     * Create a new Produit with composition and optional quantity.
-     * Composition: origines' proportions must sum to 1 (for 1kg/100%)
-     * produit.quantite: how many kg the user wants to produce (optional for template)
-     */
+    private BigDecimal latestPrixAchatForOrigine(Integer origineId) {
+        var achatOrigine = achatOrigineRepository.findTopByOrigine_IdOrigineOrderByAchat_DateAchatDescAchat_IdAchatDesc(origineId);
+        return achatOrigine != null && achatOrigine.getPrixAchat() != null ? achatOrigine.getPrixAchat() : BigDecimal.ZERO;
+    }
+
     @Transactional
     public ProduitResponseDTO createProduit(ProduitRequestDTO dto) {
         Produit produit = new Produit();
@@ -52,7 +59,6 @@ public class ProduitService {
         List<ProduitOrigine> origines = new ArrayList<>();
         BigDecimal totalProportion = BigDecimal.ZERO;
         BigDecimal prixAchatMelange = BigDecimal.ZERO;
-        BigDecimal batchKg = produit.getQuantite();
 
         if (dto.getOrigines() == null || dto.getOrigines().isEmpty()) {
             throw new IllegalArgumentException("La liste des origines ne doit pas être vide.");
@@ -69,15 +75,7 @@ public class ProduitService {
             origines.add(po);
 
             totalProportion = totalProportion.add(poDto.getProportion());
-            prixAchatMelange = prixAchatMelange.add(origine.getPrixAchat().multiply(poDto.getProportion()));
-
-            // Only check stock and update if quantite is provided and > 0
-            if (batchKg != null && batchKg.compareTo(BigDecimal.ZERO) > 0) {
-                BigDecimal requiredStock = poDto.getProportion().multiply(batchKg);
-                if (origine.getQuantite().compareTo(requiredStock) < 0) {
-                    throw new IllegalArgumentException("Stock insuffisant pour l'origine: " + origine.getNom());
-                }
-            }
+            prixAchatMelange = prixAchatMelange.add(latestPrixAchatForOrigine(origine.getIdOrigine()).multiply(poDto.getProportion()));
         }
 
         // Check composition for 1kg recipe
@@ -106,14 +104,6 @@ public class ProduitService {
             po.setProduit(savedProduit);
             po.setId(new ProduitOrigineKey(savedProduit.getIdProduit(), po.getOrigine().getIdOrigine()));
             produitOrigineRepository.save(po);
-
-            // Update origine quantite (stock) only if quantite is provided and > 0
-            if (batchKg != null && batchKg.compareTo(BigDecimal.ZERO) > 0) {
-                Origine origine = po.getOrigine();
-                BigDecimal totalUsed = po.getProportion().multiply(batchKg);
-                origine.setQuantite(origine.getQuantite().subtract(totalUsed));
-                origineRepository.save(origine);
-            }
         }
 
         return toResponseDTO(savedProduit, origines);
@@ -174,7 +164,6 @@ public class ProduitService {
         List<ProduitOrigine> newOrigines = new ArrayList<>();
         BigDecimal totalProportion = BigDecimal.ZERO;
         BigDecimal prixAchatMelange = BigDecimal.ZERO;
-        BigDecimal batchKg = existingProduit.getQuantite();
 
         for (ProduitOrigineDTO poDto : dto.getOrigines()) {
             Origine origine = origineRepository.findByNom(poDto.getOrigineNom())
@@ -188,15 +177,8 @@ public class ProduitService {
             newOrigines.add(po);
 
             totalProportion = totalProportion.add(poDto.getProportion());
-            prixAchatMelange = prixAchatMelange.add(origine.getPrixAchat().multiply(poDto.getProportion()));
+            prixAchatMelange = prixAchatMelange.add(latestPrixAchatForOrigine(origine.getIdOrigine()).multiply(poDto.getProportion()));
 
-            // Only check stock and update if quantite is provided and > 0
-            if (batchKg != null && batchKg.compareTo(BigDecimal.ZERO) > 0) {
-                BigDecimal requiredStock = poDto.getProportion().multiply(batchKg);
-                if (origine.getQuantite().compareTo(requiredStock) < 0) {
-                    throw new IllegalArgumentException("Stock insuffisant pour l'origine: " + origine.getNom());
-                }
-            }
         }
 
         // Check proportions
@@ -216,21 +198,10 @@ public class ProduitService {
         }
         existingProduit.setPrixAchat(prixAchat1kg);
 
-        // Prix de vente may be set separately, so leave unchanged unless explicitly provided
-        // existingProduit.setPrixVente(dto.getPrixVente());
-
         // Remove old origins and add new ones
         produitOrigineRepository.deleteAllByProduit_IdProduit(id);
         for (ProduitOrigine po : newOrigines) {
             produitOrigineRepository.save(po);
-
-            // Update origine stock only if quantite is provided and > 0
-            if (batchKg != null && batchKg.compareTo(BigDecimal.ZERO) > 0) {
-                Origine origine = po.getOrigine();
-                BigDecimal totalUsed = po.getProportion().multiply(batchKg);
-                origine.setQuantite(origine.getQuantite().subtract(totalUsed));
-                origineRepository.save(origine);
-            }
         }
 
         Produit savedProduit = produitRepository.save(existingProduit);
@@ -246,18 +217,6 @@ public class ProduitService {
         BigDecimal newQuantite = dto.getQuantite();
 
         if (newQuantite != null && (oldQuantite == null || !newQuantite.equals(oldQuantite))) {
-            List<ProduitOrigine> origines = produitOrigineRepository.findByProduit_IdProduit(id);
-            for (ProduitOrigine po : origines) {
-                Origine origine = po.getOrigine();
-                BigDecimal usedBefore = po.getProportion().multiply(oldQuantite == null ? BigDecimal.ZERO : oldQuantite);
-                BigDecimal usedNow = po.getProportion().multiply(newQuantite);
-                BigDecimal delta = usedNow.subtract(usedBefore);
-                if (origine.getQuantite().compareTo(delta) < 0) {
-                    throw new IllegalArgumentException("Stock insuffisant pour l'origine: " + origine.getNom());
-                }
-                origine.setQuantite(origine.getQuantite().subtract(delta));
-                origineRepository.save(origine);
-            }
             produit.setQuantite(newQuantite);
         }
 
@@ -277,19 +236,6 @@ public class ProduitService {
     public void deleteProduit(Long id) {
         Produit produit = produitRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Produit introuvable"));
-
-        List<ProduitOrigine> origines = produitOrigineRepository.findByProduit_IdProduit(id);
-        BigDecimal batchKg = produit.getQuantite();
-
-        // Restock origines only if quantite is provided and > 0
-        if (batchKg != null && batchKg.compareTo(BigDecimal.ZERO) > 0) {
-            for (ProduitOrigine po : origines) {
-                Origine origine = po.getOrigine();
-                BigDecimal totalUsed = po.getProportion().multiply(batchKg);
-                origine.setQuantite(origine.getQuantite().add(totalUsed));
-                origineRepository.save(origine);
-            }
-        }
 
         produitOrigineRepository.deleteAllByProduit_IdProduit(id);
         produitRepository.deleteById(id);

@@ -8,8 +8,6 @@ import org.springframework.data.domain.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/origines")
 @CrossOrigin(origins = "http://localhost:4200")
@@ -18,15 +16,15 @@ public class OrigineController {
     @Autowired
     private OrigineService service;
 
-    // Create a new origine
+    // Create a new origine (no quantite, no prixAchat)
     @PostMapping
     public Origine create(@Valid @RequestBody Origine origine) {
         return service.saveOrigine(origine);
     }
 
-    // Update an existing origine
+    // Update an existing origine (no quantite, no prixAchat)
     @PutMapping("/{id}")
-    public ResponseEntity<Origine> update(@PathVariable Long id, @RequestBody Origine origine) {
+    public ResponseEntity<Origine> update(@PathVariable Integer id, @RequestBody Origine origine) {
         return service.updateOrigine(id, origine)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -54,7 +52,7 @@ public class OrigineController {
 
     // Get a single origine by id
     @GetMapping("/{id}")
-    public ResponseEntity<Origine> get(@PathVariable Long id) {
+    public ResponseEntity<Origine> get(@PathVariable Integer id) {
         return service.getOrigine(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -62,13 +60,12 @@ public class OrigineController {
 
     // Delete an origine
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable Integer id) {
         if (service.deleteOrigine(id)) {
             return ResponseEntity.noContent().build();
         } else {
             return ResponseEntity.notFound().build();
         }
     }
-
 
 }

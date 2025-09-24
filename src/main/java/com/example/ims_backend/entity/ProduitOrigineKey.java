@@ -13,10 +13,10 @@ public class ProduitOrigineKey implements Serializable{
     private Long idProduit;
 
     @Column(name = "id_origine")
-    private Long idOrigine;
+    private Integer idOrigine;
 
     public ProduitOrigineKey() {}
-    public ProduitOrigineKey(Long idProduit, Long idOrigine) {
+    public ProduitOrigineKey(Long idProduit, Integer idOrigine) {
         this.idProduit = idProduit;
         this.idOrigine = idOrigine;
     }
@@ -27,10 +27,10 @@ public class ProduitOrigineKey implements Serializable{
     public void setIdProduit(Long idProduit) {
         this.idProduit = idProduit;
     }
-    public Long getIdOrigine() {
+    public Integer getIdOrigine() {
         return idOrigine;
     }
-    public void setIdOrigine(Long idOrigine) {
+    public void setIdOrigine(Integer idOrigine) {
         this.idOrigine = idOrigine;
     }
 

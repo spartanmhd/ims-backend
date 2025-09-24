@@ -9,27 +9,26 @@ import org.springframework.data.repository.query.Param;
 
 public interface AchatRepository extends JpaRepository<Achat, Integer> {
 
-    @Query("SELECT a FROM Achat a JOIN FETCH a.fournisseur f JOIN FETCH a.origine o")
-    Page<Achat> findAllWithFournisseurAndOrigine(Pageable pageable);
+    // Do NOT override findAll(Pageable) with a @Query using JOIN FETCH!
+    // The default findAll(Pageable) is fine.
 
-    @Query("SELECT a FROM Achat a JOIN a.fournisseur f JOIN a.origine o " +
+    // Find all Achats for a fournisseur name and ligne origine name (case-insensitive)
+    @Query("SELECT DISTINCT a FROM Achat a JOIN a.fournisseur f JOIN a.achatOrigines ao JOIN ao.origine o " +
             "WHERE LOWER(f.name) LIKE LOWER(CONCAT('%', :fournisseurName, '%')) " +
             "AND LOWER(o.nom) LIKE LOWER(CONCAT('%', :origineName, '%')) " +
             "ORDER BY a.dateAchat DESC")
-    Page<Achat> findByFournisseurNameAndOrigineNameOrderByDateAchatDesc(
+    Page<Achat> findAchatsByFournisseurAndOrigineName(
             @Param("fournisseurName") String fournisseurName,
             @Param("origineName") String origineName,
             Pageable pageable
     );
 
-    // Search by dateAchat
     Page<Achat> findByDateAchat(java.time.LocalDate dateAchat, Pageable pageable);
 
-    // Search by numeroBL (partial match)
     Page<Achat> findByNumeroBLContainingIgnoreCase(String numeroBL, Pageable pageable);
 
-    // List achats by newest date
     Page<Achat> findAllByOrderByDateAchatDesc(Pageable pageable);
 
-    // List achats by latest added (PK descending)
+    @Query("SELECT a FROM Achat a JOIN a.achatOrigines ao WHERE ao.origine.idOrigine = :idOrigine ORDER BY a.dateAchat DESC, a.idAchat DESC")
+    Page<Achat> findTopByOrigineIdOrderByDateAchatDescIdAchatDesc(@Param("idOrigine") Integer idOrigine, Pageable pageable);
 }

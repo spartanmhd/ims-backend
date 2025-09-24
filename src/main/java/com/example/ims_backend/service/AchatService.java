@@ -1,19 +1,22 @@
 package com.example.ims_backend.service;
 
 import com.example.ims_backend.entity.Achat;
+import com.example.ims_backend.entity.AchatOrigine;
 import com.example.ims_backend.entity.Origine;
+import com.example.ims_backend.dto.AchatOrigineDTO;
 import com.example.ims_backend.repository.AchatRepository;
+import com.example.ims_backend.repository.AchatOrigineRepository;
 import com.example.ims_backend.repository.OrigineRepository;
-import com.itextpdf.text.*;
-import com.itextpdf.text.pdf.PdfPTable;
-import com.itextpdf.text.pdf.PdfWriter;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
-import java.io.ByteArrayOutputStream;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
-import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
+import java.util.ArrayList;
 
 @Service
 public class AchatService {
@@ -22,100 +25,90 @@ public class AchatService {
     private AchatRepository achatRepository;
 
     @Autowired
+    private AchatOrigineRepository achatOrigineRepository;
+
+    @Autowired
     private OrigineRepository origineRepository;
 
-    public Achat saveAchat(Achat achat) {
-        // Conditional validation for 'avance'
-        if (!"Chèque".equalsIgnoreCase(achat.getModePaiement()) && achat.getAvance() == null) {
-            throw new IllegalArgumentException("L'avance est obligatoire");
+    /** Create a new Achat with multiple Origine lines */
+    @Transactional
+    public Achat saveAchatWithOrigines(Achat achat, List<AchatOrigineDTO> achatOrigineDtos) {
+        Achat savedAchat = achatRepository.save(achat);
+
+        List<AchatOrigine> achatOrigines = new ArrayList<>();
+        for (AchatOrigineDTO dto : achatOrigineDtos) {
+            Origine origine = origineRepository.findById(dto.getOrigineId())
+                    .orElseThrow(() -> new IllegalArgumentException("Origine not found: " + dto.getOrigineId()));
+
+            AchatOrigine achatOrigine = new AchatOrigine();
+            achatOrigine.setAchat(savedAchat);
+            achatOrigine.setOrigine(origine);
+            achatOrigine.setPrixAchat(dto.getPrixAchat());
+            achatOrigine.setQuantite(dto.getQuantite());
+            achatOrigines.add(achatOrigine);
         }
+        achatOrigineRepository.saveAll(achatOrigines);
 
-        if (achat.getOrigine() != null && achat.getOrigine().getNom() != null) {
-            // Fetch Origine by name (unique constraint on nom required!)
-            Origine origine = origineRepository.findByNom(achat.getOrigine().getNom())
-                    .orElseThrow(() -> new IllegalArgumentException("Origine not found"));
-
-            // Set correct references
-            achat.setOrigine(origine);
-            achat.setFournisseur(origine.getFournisseur());
-
-            // Save Achat first
-            Achat savedAchat = achatRepository.save(achat);
-
-            // Update Origine stock with weighted average price
-            Double oldQty = origine.getQuantite() != null ? origine.getQuantite().doubleValue() : 0.0;
-            Double oldPrice = origine.getPrixAchat() != null ? origine.getPrixAchat().doubleValue() : 0.0;
-            Double addQty = achat.getQuantite() != null ? achat.getQuantite().doubleValue() : 0.0;
-            Double addPrice = achat.getPrixAchat() != null ? achat.getPrixAchat().doubleValue() : 0.0;
-
-            Double totalQty = oldQty + addQty;
-            Double weightedPrice = totalQty > 0
-                    ? ((oldQty * oldPrice) + (addQty * addPrice)) / totalQty
-                    : 0.0;
-
-            origine.setQuantite(BigDecimal.valueOf(totalQty));
-            origine.setPrixAchat(BigDecimal.valueOf(weightedPrice));
-
-            origineRepository.save(origine);
-
-            return savedAchat;
-        } else {
-            throw new IllegalArgumentException("Origine name must be provided for Achat!");
-        }
+        return savedAchat;
     }
 
-    // Search Achat by Fournisseur name and Origine name
-    public Page<Achat> findAchatsByFournisseurAndOrigineName(String fournisseurName, String origineName, Pageable pageable) {
-        return achatRepository.findByFournisseurNameAndOrigineNameOrderByDateAchatDesc(fournisseurName, origineName, pageable);
+    /** Update an existing Achat and its lignes */
+    @Transactional
+    public Optional<Achat> updateAchatWithOrigines(Integer id, Achat achat, List<AchatOrigineDTO> achatOrigineDtos) {
+        return achatRepository.findById(id).map(existing -> {
+            achat.setIdAchat(existing.getIdAchat());
+            // Copy/merge any additional needed fields here
+            Achat updatedAchat = achatRepository.save(achat);
+            // Remove old lignes and save new ones
+            achatOrigineRepository.deleteAllByAchat_IdAchat(updatedAchat.getIdAchat());
+            List<AchatOrigine> achatOrigines = new ArrayList<>();
+            for (AchatOrigineDTO dto : achatOrigineDtos) {
+                Origine origine = origineRepository.findById(dto.getOrigineId())
+                        .orElseThrow(() -> new IllegalArgumentException("Origine not found: " + dto.getOrigineId()));
+                AchatOrigine achatOrigine = new AchatOrigine();
+                achatOrigine.setAchat(updatedAchat);
+                achatOrigine.setOrigine(origine);
+                achatOrigine.setPrixAchat(dto.getPrixAchat());
+                achatOrigine.setQuantite(dto.getQuantite());
+                achatOrigines.add(achatOrigine);
+            }
+            achatOrigineRepository.saveAll(achatOrigines);
+            return updatedAchat;
+        });
     }
 
-    // Get all Achats with joins
+    /** Get all Achats (paginated) */
     public Page<Achat> findAll(Pageable pageable) {
-        return achatRepository.findAllByOrderByDateAchatDesc(pageable);
+        return achatRepository.findAll(pageable);
     }
 
     public Optional<Achat> findById(Integer id) {
         return achatRepository.findById(id);
     }
 
-    // Update Achat; always use Origine's Fournisseur as the Achat's Fournisseur
-    public Optional<Achat> updateAchat(Integer id, Achat updatedAchat) {
-        // Conditional validation for 'avance' on update
-        if (!"Chèque".equalsIgnoreCase(updatedAchat.getModePaiement()) && updatedAchat.getAvance() == null) {
-            throw new IllegalArgumentException("L'avance est obligatoire");
-        }
-
-        return achatRepository.findById(id).map(existingAchat -> {
-            existingAchat.setPrixAchat(updatedAchat.getPrixAchat());
-            existingAchat.setQuantite(updatedAchat.getQuantite());
-            existingAchat.setDateAchat(updatedAchat.getDateAchat());
-            existingAchat.setNumeroBL(updatedAchat.getNumeroBL());
-            existingAchat.setModePaiement(updatedAchat.getModePaiement());
-            existingAchat.setNumeroCheque(updatedAchat.getNumeroCheque());
-            existingAchat.setDatePaiement(updatedAchat.getDatePaiement());
-            existingAchat.setAvance(updatedAchat.getAvance());
-            // Always set fournisseur from origine!
-            if (updatedAchat.getOrigine() != null && updatedAchat.getOrigine().getNom() != null) {
-                Origine origine = origineRepository.findByNom(updatedAchat.getOrigine().getNom())
-                        .orElseThrow(() -> new IllegalArgumentException("Origine not found"));
-                existingAchat.setOrigine(origine);
-                existingAchat.setFournisseur(origine.getFournisseur());
-            } else {
-                throw new IllegalArgumentException("Origine name must be provided for Achat update!");
-            }
-            return achatRepository.save(existingAchat);
-        });
-    }
-
+    @Transactional
     public boolean deleteAchat(Integer id) {
-        return achatRepository.findById(id).map(a -> {
-            achatRepository.delete(a);
+        Optional<Achat> achat = achatRepository.findById(id);
+        if (achat.isPresent()) {
+            achatOrigineRepository.deleteAllByAchat_IdAchat(id);
+            achatRepository.deleteById(id);
             return true;
-        }).orElse(false);
+        }
+        return false;
     }
 
-    public Page<Achat> searchByDateAchat(java.time.LocalDate dateAchat, Pageable pageable) {
-        return achatRepository.findByDateAchat(dateAchat, pageable);
+    /** All lignes for an achat */
+    public List<AchatOrigine> getAchatOriginesForAchat(Integer achatId) {
+        return achatOrigineRepository.findByAchat_IdAchat(achatId);
+    }
+
+    /** Example: find by fournisseur and origine name (requires custom query in AchatRepository) */
+    public Page<Achat> findAchatsByFournisseurAndOrigineName(String fournisseurName, String origineName, Pageable pageable) {
+        return achatRepository.findAchatsByFournisseurAndOrigineName(fournisseurName, origineName, pageable);
+    }
+
+    public Page<Achat> searchByDateAchat(LocalDate date, Pageable pageable) {
+        return achatRepository.findByDateAchat(date, pageable);
     }
 
     public Page<Achat> searchByNumeroBL(String numeroBL, Pageable pageable) {
@@ -126,89 +119,4 @@ public class AchatService {
         return achatRepository.findAllByOrderByDateAchatDesc(pageable);
     }
 
-    public byte[] generateFacturePdf(Integer id) {
-        Optional<Achat> achatOpt = findById(id);
-        if (!achatOpt.isPresent()) {
-            return null;
-        }
-        Achat achat = achatOpt.get();
-
-        try {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            Document document = new Document();
-            PdfWriter.getInstance(document, baos);
-            document.open();
-
-            // Title
-            Font titleFont = new Font(Font.FontFamily.HELVETICA, 18, Font.BOLD);
-            Paragraph title = new Paragraph("Facturation Achat", titleFont);
-            title.setAlignment(Element.ALIGN_CENTER);
-            document.add(title);
-
-            document.add(new Paragraph(" ")); // Empty line for spacing
-
-            // Table for Achat details
-            PdfPTable table = new PdfPTable(2);
-            table.setWidthPercentage(80);
-
-            // Utility function for table rows
-            table.addCell("ID Achat:");
-            table.addCell(String.valueOf(achat.getIdAchat()));
-
-            table.addCell("Origine:");
-            table.addCell(achat.getOrigine() != null ? achat.getOrigine().getNom() : "");
-
-            table.addCell("Fournisseur:");
-            table.addCell(achat.getFournisseur() != null ? achat.getFournisseur().getName() : "");
-
-            table.addCell("Date Achat:");
-            table.addCell(String.valueOf(achat.getDateAchat()));
-
-            table.addCell("Quantité:");
-            table.addCell(String.valueOf(achat.getQuantite()));
-
-            table.addCell("Prix Achat HT:");
-            table.addCell(String.valueOf(achat.getPrixAchatHT()));
-
-            table.addCell("Prix Achat TTC:");
-            table.addCell(String.valueOf(achat.getPrixAchat()));
-
-            table.addCell("Montant Total:");
-            table.addCell(String.valueOf(achat.getTotalPrixTTC()));
-
-            table.addCell("Numéro BL:");
-            table.addCell(String.valueOf(achat.getNumeroBL()));
-
-            table.addCell("Mode Paiement:");
-            table.addCell(String.valueOf(achat.getModePaiement()));
-
-            table.addCell("Date Paiement:");
-            table.addCell(String.valueOf(achat.getDatePaiement()));
-
-            table.addCell("Numéro Chèque:");
-            table.addCell(String.valueOf(achat.getNumeroCheque()));
-
-            table.addCell("Avance:");
-            table.addCell(String.valueOf(achat.getAvance()));
-
-            table.addCell("Restant à payer:");
-            table.addCell(String.valueOf(achat.getRestToPay()));
-
-            document.add(table);
-
-            document.add(new Paragraph(" ")); // Extra space
-
-            // Footer
-            Font footerFont = new Font(Font.FontFamily.HELVETICA, 10, Font.ITALIC);
-            Paragraph footer = new Paragraph("Généré le: " + java.time.LocalDateTime.now(), footerFont);
-            footer.setAlignment(Element.ALIGN_RIGHT);
-            document.add(footer);
-
-            document.close();
-            return baos.toByteArray();
-        } catch (DocumentException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
 }
