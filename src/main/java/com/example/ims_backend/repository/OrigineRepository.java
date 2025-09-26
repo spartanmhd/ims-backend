@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface OrigineRepository extends JpaRepository<Origine, Integer> {
@@ -14,4 +15,5 @@ public interface OrigineRepository extends JpaRepository<Origine, Integer> {
 
     Page<Origine> findByFournisseurIceContainingIgnoreCase(String ice, Pageable pageable);
     Page<Origine> findByFournisseurNameContainingIgnoreCase(String name, Pageable pageable);
+    List<Origine> findByFournisseur_IdFournisseur(Integer idFournisseur);
 }

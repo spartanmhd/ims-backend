@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+
 public interface AchatRepository extends JpaRepository<Achat, Integer> {
 
     // Do NOT override findAll(Pageable) with a @Query using JOIN FETCH!
@@ -31,4 +33,10 @@ public interface AchatRepository extends JpaRepository<Achat, Integer> {
 
     @Query("SELECT a FROM Achat a JOIN a.achatOrigines ao WHERE ao.origine.idOrigine = :idOrigine ORDER BY a.dateAchat DESC, a.idAchat DESC")
     Page<Achat> findTopByOrigineIdOrderByDateAchatDescIdAchatDesc(@Param("idOrigine") Integer idOrigine, Pageable pageable);
+
+    @Query("SELECT DISTINCT a FROM Achat a LEFT JOIN FETCH a.achatOrigines ao LEFT JOIN FETCH a.fournisseur LEFT JOIN FETCH ao.origine WHERE a.idAchat = :idAchat")
+    Achat findByIdWithAchatOrigines(@Param("idAchat") Integer idAchat);
+
+    @Query("SELECT DISTINCT a FROM Achat a LEFT JOIN FETCH a.achatOrigines ao LEFT JOIN FETCH a.fournisseur LEFT JOIN FETCH ao.origine")
+    List<Achat> findAllWithAchatOrigines();
 }

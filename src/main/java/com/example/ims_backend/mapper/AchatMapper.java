@@ -3,9 +3,11 @@ package com.example.ims_backend.mapper;
 import com.example.ims_backend.dto.AchatDTO;
 import com.example.ims_backend.dto.AchatOrigineDTO;
 import com.example.ims_backend.dto.AchatRequestDTO;
+import com.example.ims_backend.dto.OrigineDTO;
 import com.example.ims_backend.entity.Achat;
 import com.example.ims_backend.entity.AchatOrigine;
 import com.example.ims_backend.entity.Fournisseur;
+import com.example.ims_backend.entity.Origine;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -32,7 +34,7 @@ public class AchatMapper {
         AchatDTO dto = new AchatDTO();
         dto.setIdAchat(achat.getIdAchat());
         dto.setFournisseurId(achat.getFournisseur() != null ? achat.getFournisseur().getIdFournisseur() : null);
-        dto.setFournisseurNom(achat.getFournisseur() != null ? achat.getFournisseur().getName() : null);
+        dto.setFournisseurName(achat.getFournisseur() != null ? achat.getFournisseur().getName() : null);
         dto.setNumeroBL(achat.getNumeroBL());
         dto.setModePaiement(achat.getModePaiement());
         dto.setNumeroCheque(achat.getNumeroCheque());
@@ -49,6 +51,24 @@ public class AchatMapper {
         dto.setOrigineId(origine.getOrigine().getIdOrigine());
         dto.setPrixAchat(origine.getPrixAchat());
         dto.setQuantite(origine.getQuantite());
+        // Set stock from Origine entity (if needed in DTO)
+        if (origine.getOrigine() != null) {
+            dto.setStock(origine.getOrigine().getStock());
+        }
+        return dto;
+    }
+
+    // Optional: for mapping Origine directly to OrigineDTO (for lists, etc.)
+    public OrigineDTO origineToDTO(Origine origine) {
+        if (origine == null) return null;
+        OrigineDTO dto = new OrigineDTO();
+        dto.setIdOrigine(origine.getIdOrigine());
+        dto.setNom(origine.getNom());
+        dto.setStock(origine.getStock());
+        if (origine.getFournisseur() != null) {
+            dto.setIdFournisseur(origine.getFournisseur().getIdFournisseur());
+            dto.setFournisseurName(origine.getFournisseur().getName());
+        }
         return dto;
     }
 }

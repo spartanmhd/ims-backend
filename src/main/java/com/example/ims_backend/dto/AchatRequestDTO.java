@@ -59,4 +59,7 @@ public class AchatRequestDTO {
     public List<AchatOrigineDTO> getOrigines() {
         return origines;
     }
+    public void setOrigines(List<AchatOrigineDTO> origines) {
+        this.origines = origines;
+    }
 }

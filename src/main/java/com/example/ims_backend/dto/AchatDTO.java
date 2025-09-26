@@ -7,7 +7,7 @@ import java.util.List;
 public class AchatDTO {
     private Integer idAchat;
     private Integer fournisseurId;
-    private String fournisseurNom; // optional, for display
+    private String fournisseurName; // optional, for display
     private LocalDate dateAchat;
     private String numeroBL;
     private String modePaiement;
@@ -33,11 +33,11 @@ public class AchatDTO {
         this.fournisseurId = fournisseurId;
     }
 
-    public String getFournisseurNom() {
-        return fournisseurNom;
+    public String getFournisseurName() {
+        return fournisseurName;
     }
-    public void setFournisseurNom(String fournisseurNom) {
-        this.fournisseurNom = fournisseurNom;
+    public void setFournisseurName(String fournisseurName) {
+        this.fournisseurName = fournisseurName;
     }
 
     public LocalDate getDateAchat() {

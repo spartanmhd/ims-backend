@@ -3,10 +3,10 @@ package com.example.ims_backend.controller;
 import com.example.ims_backend.dto.AchatDTO;
 import com.example.ims_backend.dto.AchatOrigineDTO;
 import com.example.ims_backend.dto.AchatRequestDTO;
+import com.example.ims_backend.entity.Origine;
 import com.example.ims_backend.mapper.AchatMapper;
 import com.example.ims_backend.service.AchatService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,11 +22,13 @@ import java.util.stream.Collectors;
 @CrossOrigin(origins = "http://localhost:4200")
 public class AchatController {
 
-    @Autowired
-    private AchatService achatService;
+    private final AchatService achatService;
+    private final AchatMapper achatMapper;
 
-    @Autowired
-    private AchatMapper achatMapper;
+    public AchatController(AchatService achatService, AchatMapper achatMapper) {
+        this.achatService = achatService;
+        this.achatMapper = achatMapper;
+    }
 
     @PostMapping
     public ResponseEntity<?> createAchat(@Valid @RequestBody AchatRequestDTO request) {
@@ -70,26 +72,11 @@ public class AchatController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<AchatDTO>> getAchats(
-            @RequestParam(required = false) String fournisseurName,
-            @RequestParam(required = false) String origineName,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "100") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<com.example.ims_backend.entity.Achat> achats;
-        if (fournisseurName != null && origineName != null) {
-            achats = achatService.findAchatsByFournisseurAndOrigineName(fournisseurName, origineName, pageable);
-        } else {
-            achats = achatService.findAll(pageable);
-        }
-        // Always map to DTO, never return entity directly
-        Page<AchatDTO> achatDTOs = achats.map(achat -> {
-            var origines = achatService.getAchatOriginesForAchat(achat.getIdAchat());
-            return achatMapper.toDTO(achat, origines);
-        });
-        return ResponseEntity.ok(achatDTOs);
+    public List<AchatDTO> getAllAchats() {
+        return achatService.getAllAchatWithOrigines();
     }
 
+    // Paginated endpoints: N+1 queries but safe from LazyInitializationException
     @GetMapping("/search/date")
     public ResponseEntity<Page<AchatDTO>> searchByDateAchat(@RequestParam String dateAchat,
                                                             @RequestParam(defaultValue = "0") int page,
@@ -115,6 +102,20 @@ public class AchatController {
             return achatMapper.toDTO(achat, origines);
         });
         return ResponseEntity.ok(achatDTOs);
+    }
+
+    @GetMapping("/fournisseur/{idFournisseur}/origines")
+    public ResponseEntity<List<AchatOrigineDTO>> getOriginesForFournisseur(@PathVariable Integer idFournisseur) {
+        List<Origine> origines = achatService.getOriginesForFournisseur(idFournisseur);
+        List<AchatOrigineDTO> dtoList = origines.stream()
+                .map(origine -> {
+                    AchatOrigineDTO dto = new AchatOrigineDTO();
+                    dto.setOrigineId(origine.getIdOrigine());
+                    // other fields as needed from Origine
+                    return dto;
+                })
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dtoList);
     }
 
     @GetMapping("/newest")

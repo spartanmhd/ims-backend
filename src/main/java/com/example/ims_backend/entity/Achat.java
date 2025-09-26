@@ -42,6 +42,10 @@ public class Achat {
     @Column(precision = 12, scale = 2)
     private BigDecimal avance;
 
+    // Legacy column present in some databases: make it nullable and ignored by JPA writes
+    @Column(name = "id_origine", insertable = false, updatable = false, nullable = true)
+    private Integer legacyIdOrigine;
+
     @OneToMany(mappedBy = "achat", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JsonIgnore
     private List<AchatOrigine> achatOrigines;
@@ -73,15 +77,16 @@ public class Achat {
     public void setAvance(BigDecimal avance) { this.avance = avance; }
 
     public List<AchatOrigine> getAchatOrigines() {
-        System.out.println("getAchatOrigines called!");
-        new Exception("Stack trace").printStackTrace();
         return achatOrigines;
     }
     public void setAchatOrigines(List<AchatOrigine> achatOrigines) { this.achatOrigines = achatOrigines; }
 
+    public Integer getLegacyIdOrigine() { return legacyIdOrigine; }
+    public void setLegacyIdOrigine(Integer legacyIdOrigine) { this.legacyIdOrigine = legacyIdOrigine; }
+
     @Transient
     public BigDecimal getTotalPrixTTC() {
-        if (achatOrigines == null) return BigDecimal.ZERO;
+        if (achatOrigines == null || achatOrigines.isEmpty()) return BigDecimal.ZERO;
         return achatOrigines.stream()
                 .map(AchatOrigine::getTotalTTC)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);

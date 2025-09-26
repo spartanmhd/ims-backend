@@ -6,6 +6,7 @@ public class AchatOrigineDTO {
     private Integer origineId;
     private BigDecimal prixAchat;
     private BigDecimal quantite;
+    private Integer stock;
 
     // Getters and setters
     public Integer getOrigineId() { return origineId; }
@@ -16,4 +17,7 @@ public class AchatOrigineDTO {
 
     public BigDecimal getQuantite() { return quantite; }
     public void setQuantite(BigDecimal quantite) { this.quantite = quantite; }
+
+    public Integer getStock() { return stock; }
+    public void setStock(Integer stock) { this.stock = stock; }
 }

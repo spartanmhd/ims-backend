@@ -21,6 +21,9 @@ public class Origine {
     @NotNull(message = "Le fournisseur est obligatoire")
     private Fournisseur fournisseur;
 
+    @Column(name = "stock")
+    private Integer stock;
+
 //    @Column(precision = 14, scale = 2)
 //    @NotNull(message = "Le prix d'achat est obligatoire")
 //    private BigDecimal prixAchat; //TTC
@@ -81,6 +84,9 @@ public class Origine {
 
     public Fournisseur getFournisseur() { return fournisseur; }
     public void setFournisseur(Fournisseur fournisseur) { this.fournisseur = fournisseur; }
+
+    public Integer getStock() { return stock; }
+    public void setStock(Integer stock) { this.stock = stock; }
 
 //    public BigDecimal getPrixAchat() { return prixAchat; }
 //    public void setPrixAchat(BigDecimal prixAchat) { this.prixAchat = prixAchat; }
