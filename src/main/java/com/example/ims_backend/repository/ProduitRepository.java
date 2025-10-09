@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 
@@ -14,4 +15,6 @@ public interface ProduitRepository extends JpaRepository<Produit, Long> {
     @Query("SELECT DISTINCT p FROM Produit p LEFT JOIN FETCH p.origines")
     List<Produit> findAllWithOrigines();
     Page<Produit> findByNomContainingIgnoreCase(String nom, Pageable pageable);
+
+    List<Produit> findByQuantiteGreaterThan(BigDecimal quantite);
 }

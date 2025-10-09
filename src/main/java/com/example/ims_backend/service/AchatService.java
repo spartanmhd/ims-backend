@@ -5,10 +5,14 @@ import com.example.ims_backend.entity.Achat;
 import com.example.ims_backend.entity.AchatOrigine;
 import com.example.ims_backend.entity.Origine;
 import com.example.ims_backend.dto.AchatOrigineDTO;
+import com.example.ims_backend.entity.Produit;
+import com.example.ims_backend.entity.ProduitOrigine;
 import com.example.ims_backend.mapper.AchatMapper;
 import com.example.ims_backend.repository.AchatRepository;
 import com.example.ims_backend.repository.AchatOrigineRepository;
 import com.example.ims_backend.repository.OrigineRepository;
+import com.example.ims_backend.repository.ProduitOrigineRepository;
+import com.example.ims_backend.repository.ProduitRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +37,13 @@ public class AchatService {
 
     @Autowired
     private OrigineRepository origineRepository;
+
+    @Autowired
+    private ProduitOrigineRepository produitOrigineRepository;
+
+    @Autowired
+    private ProduitRepository produitRepository;
+
     @Autowired
     private AchatMapper achatMapper;
 
@@ -53,15 +64,33 @@ public class AchatService {
             if (origine.getStock() == null) {
                 origine.setStock(0);
             }
-            // Update the stock using BigDecimal
+            // Update the stock using BigDecimal (increase origine stock)
             origine.setStock(origine.getStock() + dto.getQuantite().intValue());
             origineRepository.save(origine);
+
+            // Decrement product stock(s) linked to this origine
+            List<ProduitOrigine> links = produitOrigineRepository.findByOrigine_IdOrigine(origine.getIdOrigine());
+            for (ProduitOrigine link : links) {
+                Produit produit = link.getProduit();
+                BigDecimal current = produit.getQuantite() == null ? BigDecimal.ZERO : produit.getQuantite();
+                BigDecimal proportion = link.getProportion() == null ? BigDecimal.ONE : link.getProportion();
+                BigDecimal toSubtract = dto.getQuantite() == null ? BigDecimal.ZERO : dto.getQuantite().multiply(proportion);
+                if (toSubtract.compareTo(BigDecimal.ZERO) < 0) {
+                    toSubtract = BigDecimal.ZERO;
+                }
+                if (current.compareTo(toSubtract) < 0) {
+                    throw new IllegalArgumentException("Stock insuffisant pour le produit id=" + produit.getIdProduit());
+                }
+                produit.setQuantite(current.subtract(toSubtract));
+                produitRepository.save(produit);
+            }
 
             AchatOrigine achatOrigine = new AchatOrigine();
             achatOrigine.setAchat(savedAchat);
             achatOrigine.setOrigine(origine);
             achatOrigine.setPrixAchat(dto.getPrixAchat());
             achatOrigine.setQuantite(dto.getQuantite());
+            achatOrigine.setAchat(savedAchat);
             achatOrigines.add(achatOrigine);
         }
         achatOrigineRepository.saveAll(achatOrigines);

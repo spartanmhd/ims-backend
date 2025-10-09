@@ -244,4 +244,14 @@ public class ProduitService {
     public Page<Produit> searchProduitsByName(String nom, Pageable pageable) {
         return produitRepository.findByNomContainingIgnoreCase(nom, pageable);
     }
+
+    public List<ProduitResponseDTO> getAvailableProduits() {
+        List<Produit> produits = produitRepository.findByQuantiteGreaterThan(BigDecimal.ZERO);
+        List<ProduitResponseDTO> dtos = new ArrayList<>();
+        for (Produit produit : produits) {
+            List<ProduitOrigine> origines = produitOrigineRepository.findByProduit_IdProduit(produit.getIdProduit());
+            dtos.add(toResponseDTO(produit, origines));
+        }
+        return dtos;
+    }
 }

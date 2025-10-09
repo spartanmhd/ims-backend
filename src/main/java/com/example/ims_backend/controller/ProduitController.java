@@ -63,4 +63,10 @@ public class ProduitController {
         produitService.deleteProduit(id);
         return ResponseEntity.noContent().build();
     }
+
+    // Endpoint to list only products with quantity > 0 for vente creation
+    @GetMapping("/available")
+    public List<ProduitResponseDTO> getAvailableProduits() {
+        return produitService.getAvailableProduits();
+    }
 }

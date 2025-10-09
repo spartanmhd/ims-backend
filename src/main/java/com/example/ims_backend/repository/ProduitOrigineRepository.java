@@ -9,4 +9,7 @@ import java.util.List;
 public interface ProduitOrigineRepository extends JpaRepository<ProduitOrigine, ProduitOrigineKey> {
     List<ProduitOrigine> findByProduit_IdProduit(Long idProduit);
     void deleteAllByProduit_IdProduit(Long idProduit);
+
+    // Find mapping(s) by origine id
+    List<ProduitOrigine> findByOrigine_IdOrigine(Integer idOrigine);
 }
